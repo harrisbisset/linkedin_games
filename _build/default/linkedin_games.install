@@ -1,8 +1,0 @@
-lib: [
-  "_build/install/default/lib/linkedin_games/META"
-  "_build/install/default/lib/linkedin_games/dune-package"
-  "_build/install/default/lib/linkedin_games/opam"
-]
-bin: [
-  "_build/install/default/bin/linkedin_games"
-]
