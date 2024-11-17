@@ -5,7 +5,7 @@ let get_squares_x (squares : square list) : int list =
     match squares with
     | [] -> ls
     | head :: tail ->
-      if not (List.mem head.pos.x ls)
+      if List.mem head.pos.x ls
       then get_squares_x_rec tail ls
       else get_squares_x_rec tail (ls @ [ head.pos.x ])
   in
@@ -17,7 +17,7 @@ let get_squares_y (squares : square list) : int list =
     match squares with
     | [] -> ls
     | head :: tail ->
-      if not (List.mem head.pos.y ls)
+      if List.mem head.pos.y ls
       then get_squares_y_rec tail ls
       else get_squares_y_rec tail (ls @ [ head.pos.y ])
   in
@@ -78,11 +78,15 @@ let is_solved (board : q_board) : bool =
     : bool
     =
     match sq with
-    | [] -> false
+    | [] ->
+      if List.for_all (fun x -> List.mem x x_ls) x_axis
+         && List.for_all (fun x -> List.mem x y_ls) y_axis
+      then false
+      else true
     | hd :: tl ->
       (match
-         ( (if hd.queen_present && not (List.mem hd.pos.x x_ls) then true else false)
-         , if hd.queen_present && not (List.mem hd.pos.y y_ls) then true else false )
+         ( hd.queen_present && not (List.mem hd.pos.x x_ls)
+         , hd.queen_present && not (List.mem hd.pos.y y_ls) )
        with
        | true, true ->
          check_axis tl x_axis y_axis (x_ls @ [ hd.pos.x ]) (y_ls @ [ hd.pos.y ])
