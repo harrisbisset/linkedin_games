@@ -49,16 +49,24 @@ let rec valid_board (positions : position list) : bool =
 (* assumes valid board *)
 let is_solved (board : q_board) : bool =
   (* returns false if valid *)
-  let rec check_colours (squares : square list) (colours : colour list) : bool =
-    match squares with
-    | [] -> false
+  let rec check_colours (s : square list) (cl : colour list) (ocl : colour list) : bool =
+    match s with
+    | [] -> if List.length ocl = 0 then false else true
     | head :: tail ->
       (match head.queen_present with
        | true ->
-         if List.mem head.colour colours
-         then true
-         else check_colours tail (colours @ [ head.colour ])
-       | false -> check_colours tail colours)
+         (match List.mem head.colour cl, List.mem head.colour ocl with
+          | true, _ -> true
+          | _, true ->
+            check_colours
+              tail
+              (cl @ [ head.colour ])
+              (List.filter (fun x -> x != head.colour) ocl)
+          | _ -> check_colours tail (cl @ [ head.colour ]) ocl)
+       | false ->
+         if List.mem head.colour cl
+         then check_colours tail cl (List.filter (fun x -> x != head.colour) ocl)
+         else check_colours tail cl (ocl @ [ head.colour ]))
   in
   (* returns false if valid *)
   let rec check_axis
@@ -82,7 +90,7 @@ let is_solved (board : q_board) : bool =
        | true, false -> check_axis tl x_axis y_axis (x_ls @ [ hd.pos.x ]) y_ls
        | false, false -> check_axis tl x_axis y_axis x_ls y_ls)
   in
-  if check_colours board.squares []
+  if check_colours board.squares [] []
   then false
   else if check_axis
             board.squares
