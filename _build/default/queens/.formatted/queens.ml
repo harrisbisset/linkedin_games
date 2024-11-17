@@ -1,16 +1,30 @@
-type colour =
-  | Red
-  | Blue
+open Types
 
-type position =
-  { x : int
-  ; y : int
-  }
+let get_squares_x (squares : square list) : int list =
+  let rec get_squares_x_rec (squares : square list) (ls : int list) =
+    match squares with
+    | [] -> ls
+    | head :: tail ->
+      if not (List.mem head.pos.x ls)
+      then get_squares_x_rec tail ls
+      else get_squares_x_rec tail (ls @ [ head.pos.x ])
+  in
+  get_squares_x_rec squares []
+;;
 
-type axis =
-  | XAxis
-  | YAxis
+let get_squares_y (squares : square list) : int list =
+  let rec get_squares_y_rec (squares : square list) (ls : int list) =
+    match squares with
+    | [] -> ls
+    | head :: tail ->
+      if not (List.mem head.pos.y ls)
+      then get_squares_y_rec tail ls
+      else get_squares_y_rec tail (ls @ [ head.pos.y ])
+  in
+  get_squares_y_rec squares []
+;;
 
+(* Checks if queen positions are valid *)
 let rec valid_board (positions : position list) : bool =
   match positions with
   | [] -> true
@@ -32,9 +46,57 @@ let rec valid_board (positions : position list) : bool =
     if valid_position head tail then valid_board tail else false
 ;;
 
-let add_x_y
-  (x : int)
-  (y : int)
+(* assumes valid board *)
+let is_solved (board : q_board) : bool =
+  (* returns false if valid *)
+  let rec check_colours (squares : square list) (colours : colour list) : bool =
+    match squares with
+    | [] -> false
+    | head :: tail ->
+      (match head.queen_present with
+       | true ->
+         if List.mem head.colour colours
+         then true
+         else check_colours tail (colours @ [ head.colour ])
+       | false -> check_colours tail colours)
+  in
+  (* returns false if valid *)
+  let rec check_axis
+    (sq : square list)
+    (x_axis : int list)
+    (y_axis : int list)
+    (x_ls : int list)
+    (y_ls : int list)
+    : bool
+    =
+    match sq with
+    | [] -> false
+    | hd :: tl ->
+      (match
+         ( (if hd.queen_present && not (List.mem hd.pos.x x_ls) then true else false)
+         , if hd.queen_present && not (List.mem hd.pos.y y_ls) then true else false )
+       with
+       | true, true ->
+         check_axis tl x_axis y_axis (x_ls @ [ hd.pos.x ]) (y_ls @ [ hd.pos.y ])
+       | false, true -> check_axis tl x_axis y_axis x_ls (y_ls @ [ hd.pos.y ])
+       | true, false -> check_axis tl x_axis y_axis (x_ls @ [ hd.pos.x ]) y_ls
+       | false, false -> check_axis tl x_axis y_axis x_ls y_ls)
+  in
+  if check_colours board.squares []
+  then false
+  else if check_axis
+            board.squares
+            (get_squares_x board.squares)
+            (get_squares_y board.squares)
+            []
+            []
+  then false
+  else true
+;;
+
+(* Calculates adds all positions a queen's position makes invalid *)
+let invalidate_squares
+  (pos : position)
   (x_lower : int)
   (x_upper : int)
   (y_lower : int)
@@ -42,47 +104,32 @@ let add_x_y
   (invalid_squares : position list)
   : position list
   =
-  let rec inc
-    (move : int)
-    (stationary : int)
+  let rec add_x_y
+    (inc : int)
+    (no_inc : int)
     (upper : int)
-    (ax : axis)
+    (x_pos : bool)
     (invalid_squares : position list)
     : position list
     =
-    if move <= upper
-    then (
-      match ax with
-      | XAxis ->
-        inc
-          (move + 1)
-          stationary
-          upper
-          ax
-          (invalid_squares @ [ { x = move; y = stationary } ])
-      | YAxis ->
-        inc
-          (move + 1)
-          stationary
-          upper
-          ax
-          (invalid_squares @ [ { x = stationary; y = move } ]))
+    if inc <= upper
+    then
+      add_x_y
+        (inc + 1)
+        no_inc
+        upper
+        x_pos
+        (invalid_squares
+         @
+         match x_pos with
+         | true -> [ { x = inc; y = no_inc } ]
+         | false -> [ { x = no_inc; y = inc } ])
     else invalid_squares
   in
-  inc y_lower x y_upper YAxis (inc x_lower y x_upper XAxis invalid_squares)
-;;
-
-let invalidate_squares
-  (x_lower : int)
-  (x_upper : int)
-  (y_lower : int)
-  (y_upper : int)
-  (pos : position)
-  (invalid_squares : position list)
-  : position list
-  =
-  let add_original (pos : position) (invalid_squares : position list) : position list =
-    invalid_squares @ [ pos ]
-  in
-  add_x_y pos.x pos.y x_lower x_upper y_lower y_upper (add_original pos invalid_squares)
+  add_x_y
+    y_lower
+    pos.x
+    y_upper
+    false
+    (add_x_y x_lower pos.y x_upper true (invalid_squares @ [ pos ]))
 ;;
